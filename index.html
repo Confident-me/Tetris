@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>俄罗斯方块</title>
+    <script src="js/jquery-3.1.1.min.js"></script>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body class="huyan">
+ <div class="wrap">
+    <div class="play_wrap">
+        <!-- 容器 -->
+        <div id="play_area" class=""></div>
+
+        <!-- 介绍、说明 -->
+        <div class="play_menu">
+            <p>下一个：</p>
+            <div id="play_nextType"></div>
+
+            <a href="javascript:void(0)" id="play_btn_start" class="play_btn" unselectable="on">开始</a>
+            <a href="javascript:void(0)" id="play_btn_level" class="play_btn" unselecttable="on">
+                <span class="level_text">中等</span>
+                <span class="level_icon"></span>
+            </a>
+
+            <div class="level_menu" id="play_menu_level">
+                <ul>
+                    <li>
+                        <a href="javascript:void(0);" level="0">简单</a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0);" level="1">中等</a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0);" level="2">困难</a>
+                    </li>
+                </ul>
+            </div>
+
+            <p>
+                分数：<span id="play_score">0</span>
+            </p>
+            <p>
+                方向：<span id="play_direction">bottom</span>
+            </p>
+            <p>
+                <span class="guandeng">关灯</span>
+            </p>
+
+            <!--<p>
+                说明：<br> -“下”、“左”、“右”键控制方向，“上”为变形；<br> -游戏开始前、暂停时可调整难度；<br>
+                -难度分“简单”、“中等”、“困难”三级；<br> -对应的分值为10、20、40；<br>
+                -多行同时消去的倍数为1、4、10、20；
+            </p>-->
+
+        </div>
+    </div>
+
+ </div>
+ <div class="over">
+     <div class="over-text">
+         GAME OVER
+     </div>
+ </div>
+</body>
+<script src="js/index_1.js"></script>
+<!--<script src="js/index.js"></script>-->
+</html>
