@@ -6,6 +6,17 @@ var Tetris = function () {
 	this.$playArea = $("#play_area");
 	// 右侧容器
 	this.$playNextType = $("#play_nextType");
+	// 开始按钮
+	this.$playBtnStart = $("#play_btn_start");
+	// 方向
+	this.$playDirection = $("#play_direction");
+	// 分数
+	this.$playScore = $("#play_score");
+	// 选择难度按钮
+	this.$playBtnLevel = $("#play_btn_level");
+	// 难度列表按钮
+	this.$playMenuLevel = $("#play_menu_level")
+
 	// 行
 	this.cellRow = 24;
 	// 列
@@ -91,8 +102,14 @@ var Tetris = function () {
 	//this.tetrisType = [1, 1];
 	this.tetrisType = [1, 0];
 
-	// 是否显示下一个方块
-	this.turning = true;
+	// 是否显示下一个方块开关
+	this.turning = false;
+	// 控制开始暂停开关
+	this.playing = false;
+	// 结束开关
+	this.death = false;
+	// 开始暂停开关
+	this.isStart = false;
 
 	// 左侧面板方块列表
 	this.thisTetris = [];
@@ -101,6 +118,13 @@ var Tetris = function () {
 	this.offsetCol = Math.floor(this.cellCol / 2);
 	this.offsetRow = -3;
 
+	// 初始化方向
+	this.direction = "bottom";
+	//初始化分数
+	this.score = 0;
+
+	// 保存下落后的方块列表
+	this.fullArr = [];
 
 	this.start();
 };
@@ -109,7 +133,8 @@ Tetris.prototype = {
 	// 开始按钮
 	start: function () {
 		this.init();
-		this.showTetris();
+		this.menu();
+		this.control();
 	},
 	init: function () {
 		var that = this,
@@ -163,21 +188,7 @@ Tetris.prototype = {
 			_ele.addClass("active"); // 给存储的坐标单元格添加样式
 		}
 	},
-	// 左侧下一个方块
-	/*nextTetris: function () {
-	 var that = this;
-	 clearInterval(this.timer);
-	 this.preTetris = [];
-	 this.offsetRow = -2;
-	 this.offsetCol = 7;
-	 this.tetrisType = this.nextType;
-	 this.nextType = this.tetrisTypeArr[Math.floor(this.tetrisTypeArr.length * Math.random())];
-	 this.showNextType();
-	 this.timer = setInterval(function () {
-	 that.offsetRow++;
-	 that.showTetris();
-	 }, this.interval[this.level])
-	 },*/
+
 	/**
 	 * 方块在左侧面板的位置
 	 * @param dir 方向
@@ -229,14 +240,244 @@ Tetris.prototype = {
 		this.preTetris = this.thisTetris.slice(0);
 	},
 	// 左侧方块下落
-	/*tetrisDown: function () {
-	 clearInterval(this.timer);
-	 var _index;
-	 this.turning = false;
-	 forOuter: for (var j = 0, jLen = this.preTetris.length; j < jLen; j++) {
+	tetrisDown: function () {
+		clearInterval(this.timer);
+		var _index;
+		this.turning = false;
+		// 循环左侧下落方块的列表，并且保存下标
+		forOuter: for (var j = 0, jLen = this.preTetris.length; j < jLen; j++) {
+			_index = $.inArray(this.preTetris[j], this.cellArr);
+			// 循环所有单元格
+			for (var k = _index - _index % this.cellCol, kLen = _index - _index % this.cellCol + this.cellCol; k < kLen; k++) {
+				// 如果所有单元格中有方块,结束本次循环
+				if (!this.cellArr[k].hasClass('active')) {
+					continue forOuter;
+				}
+			}
+			if ($.inArray(_index - _index % this.cellCol, this.fullArr)) {
+				this.fullArr.push(_index - _index % this.cellCol);
+			}
+		}
+		if (this.fullArr.length) {
+			this.getScore();
+			return;
+		}
+		for (var i = 6; i < 9; i++) {
+			if (this.cellArr[i].hasClass("active")) {
+				this.gemOver();
+				return;
+			}
+		}
+		this.nextTetris();
+	},
 
-	 }
-	 }*/
+	// 事件绑定
+	menu: function () {
+		var that = this;
+		// 开始暂停
+		this.$playBtnStart.click(function () {
+			if (that.playing) {
+				that.pause();
+			} else if (that.death) {
+				that.resetArea();
+				that.play();
+			} else {
+				that.play();
+			}
+		});
+		// 隐藏弹框
+		$('.over').click(function () {
+			$(this).hide();
+		});
+		// 空格事件
+		$("html").keydown(function (e) {
+			if (e.keyCode == 32) {
+				if (this.isStart) {
+					that.pause();
+					this.isStart = false;
+				} else {
+					that.play();
+					this.isStart = true;
+				}
+			}
+		});
+		// 关灯
+		var $body = $("body");
+		$(".guandeng").click(function () {
+			if ($body.hasClass("deng")) {
+				$body.removeClass("deng");
+				$(this).text("关灯")
+			} else {
+				$body.addClass("deng");
+				$(this).text("护眼")
+			}
+		});
+		// 显示等级按钮
+		this.$playBtnLevel.click(function(){
+			if(that.playing)
+				return;
+			that.$playMenuLevel.toggle();
+		});
+		// 选择等级
+		that.$playMenuLevel.find('a').click(function(){
+			that.$playMenuLevel.hide();
+			that.$playBtnLevel.find(".level_text").html($(this).html());
+			that.setOptions({
+				"level":$(this).attr('level')
+			})
+		})
+	},
+
+	// 暂停
+	pause: function () {
+		this.$playBtnStart.html("开始");
+		this.playing = false;
+		clearTimeout(this.timer)
+	},
+	// 开始
+	play: function () {
+		var that = this;
+		this.$playBtnStart.html("暂停");
+		this.playing = true;
+		this.death = false;
+		if (this.turning) {
+			this.timer = setInterval(function () {
+				that.offsetRow++;
+				that.showTetris();
+			}, this.interval[this.level]);
+		} else {
+			this.nextTetris();
+		}
+	},
+
+	// 键盘控制
+	control: function () {
+		var that = this;
+		$('html').keydown(function (e) {
+			if (!that.playing) {
+				return that.playing;
+			}
+			switch (e.keyCode) {
+				case 37:
+					that.direction = 'left';
+					break;
+				case 38:
+					that.direction = 'top';
+					break;
+				case 39:
+					that.direction = 'right';
+					break;
+				case 40:
+					that.direction = 'bottom';
+					break;
+				default:
+					return;
+					break;
+			}
+			that.$playDirection.html(that.direction);
+			that.drive();
+			return false;
+		})
+	},
+	// 遥控器
+	drive: function () {
+		switch (this.direction) {
+			case 'left':
+				if (this.offsetCol > 0) {
+					this.offsetCol--;
+				}
+				break;
+			case 'right':
+				this.offsetCol++;
+				break;
+			case 'top':
+				this.changTetris();
+				break;
+			case 'bottom':
+				if (this.offsetRow < this.cellRow - 2) {
+					this.offsetRow++;
+				}
+				break;
+			default:
+				break;
+		}
+		this.showTetris(this.direction)
+	},
+
+	// 上方向变形
+	changTetris: function () {
+		var _len = this.tetrisArr[this.tetrisType[0]].length;
+		if (this.tetrisType[1] < _len - 1) {
+			this.tetrisType[1]++;
+		} else {
+			this.tetrisType[1] = 0;
+		}
+	},
+
+	// 计算分数
+	getScore: function () {
+		// 循环已经落下的方块的列表
+		for (var i = this.fullArr.length - 1; i >= 0; i--) {
+			// 循环所有列
+			for (var j = 0; j < this.cellCol; j++) {
+				// 去除单元格里同一排class
+				this.cellArr[j + this.fullArr[i]].removeClass('active');
+				// 如果j == 最后一列
+				if (j == this.cellCol - 1) {
+					// 在循环已经落下的方块列表
+					for (var k = this.fullArr[i]; k >= 0; k--) {
+						if (this.cellArr[k].hasClass("active")) {
+							this.cellArr[k].removeClass("active");
+							this.cellArr[k + this.cellCol].addClass("active");
+						}
+					}
+				}
+			}
+		}
+		this.score += this.levelScore[this.level] * this.doubleScore[this.fullArr.length - 1];
+		this.$playScore.html(this.score);
+		this.fullArr = [];
+		this.nextTetris();
+	},
+
+	// 从新计算分数
+	resetArea:function(){
+		$('.play_cell.active').removeClass("active");
+		this.setOptions({
+			"score": 0
+		});
+		this.$playScore.html(this.score)
+	},
+
+	// 设置游戏等级
+	setOptions:function(options){
+		this.score = options.score === 0 ? options.score : (options.score || this.score);
+		this.level = options.level === 0 ? options.level : (options.level || this.level);
+	},
+
+	// 左侧下一个方块
+	nextTetris: function () {
+		var that = this;
+		clearInterval(this.timer);
+		this.preTetris = [];
+		this.offsetRow = -2;
+		this.offsetCol = 7;
+		this.tetrisType = this.nextType;
+		this.nextType = this.tetrisTypeArr[Math.floor(this.tetrisTypeArr.length * Math.random())];
+		this.showNextType();
+		this.timer = setInterval(function () {
+			that.offsetRow++;
+			that.showTetris();
+		}, this.interval[this.level])
+	},
+
+	// 游戏结束
+	gemOver: function () {
+		this.death = true;
+		this.pause();
+		$('.over').show();
+		return;
+	}
 
 };
 $(function () {
